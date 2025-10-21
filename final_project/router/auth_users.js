@@ -43,7 +43,7 @@ regd_users.post("/login", (req,res) => {
   if (!username || !password) {
       return res.status(404).json({ message: "Error logging in" });
   }
-  
+
   // Authenticate user
   if (authenticatedUser(username, password)) {
       // Generate JWT access token
@@ -62,8 +62,36 @@ regd_users.post("/login", (req,res) => {
 
 // Add a book review
 regd_users.put("/auth/review/:isbn", (req, res) => {
-  //Write your code here
-  return res.status(300).json({message: "Yet to be implemented"});
+  // Get the review from query parameters
+  const review = req.query.review;
+  if (!review) {
+    return res.status(400).json({ message: "Review is required" });
+  }
+
+  // ensure session + username exist
+  if (!req.session || !req.session.authorization || !req.session.authorization.username) {
+    return res.status(403).json({ message: "User not logged in" });
+  }
+  let loggedUser = req.session.authorization['username'];
+
+  const isbn = req.params.isbn;
+  let book = books[isbn];  // Retrieve book object associated with isbn
+
+  // Check if the book with the given ISBN exists
+  if (book) {
+    // ensure reviews object exists, then add/update review keyed by username
+    book.reviews = book.reviews || {};
+    const existed = Object.prototype.hasOwnProperty.call(book.reviews, loggedUser);
+    book.reviews[loggedUser] = review;
+
+    return res.status(200).json({
+      message: existed ? "Review updated successfully" : "Review added successfully",
+      reviews: book
+    });
+  } else {
+    // Send a error response If the book with the given ISBN does not exist
+    return res.status(404).json({ message: "Book not found" });
+  }
 });
 
 module.exports.authenticated = regd_users;
